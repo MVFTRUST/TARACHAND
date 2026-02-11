@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>पदाधिकारियों का विवरण</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: #1a73e8;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-login {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-panel {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .photo {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0d47a1;
+        }
+        
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>पदाधिकारियों का विवरण</h1>
+            <p>MVF Trust India</p>
+        </div>
+        
+        <!-- ADMIN LOGIN -->
+        <div id="loginSection" class="admin-login">
+            <h3>एडमिन लॉगिन</h3>
+            <input type="password" id="passwordInput" placeholder="पासवर्ड डालें">
+            <button onclick="login()">लॉगिन</button>
+            <p style="margin-top: 10px; color: #666; font-size: 14px;">Default password: admin123</p>
+        </div>
+        
+        <!-- ADMIN PANEL -->
+        <div id="adminPanel" class="admin-panel">
+            <h3>एडमिन कंट्रोल्स</h3>
+            <button onclick="showAddModal()">➕ नया जोड़ें</button>
+            <button onclick="exportData()">📥 एक्सपोर्ट</button>
+            <button onclick="importData()">📤 इम्पोर्ट</button>
+            <button onclick="logout()" style="background:#ea4335;">🚪 लॉगआउट</button>
+        </div>
+        
+        <!-- OFFICERS GRID -->
+        <h2 style="margin: 20px 0;">पदाधिकारियों की सूची</h2>
+        <div class="grid" id="officersGrid">
+            <!-- यहाँ डेटा आएगा -->
+        </div>
+    </div>
+    
+    <!-- ADD/EDIT MODAL -->
+    <div id="dataModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">नया पदाधिकारी जोड़ें</h3>
+            <input type="hidden" id="editId">
+            
+            <input type="text" id="inputName" placeholder="नाम" style="width:100%;"><br>
+            <input type="text" id="inputPosition" placeholder="पद" style="width:100%;"><br>
+            <input type="text" id="inputDepartment" placeholder="विभाग" style="width:100%;"><br>
+            <input type="text" id="inputPhoto" placeholder="फोटो URL" style="width:100%;"><br>
+            <input type="email" id="inputEmail" placeholder="ईमेल" style="width:100%;"><br>
+            <input type="tel" id="inputPhone" placeholder="फोन नंबर" style="width:100%;"><br>
+            
+            <div style="margin-top: 20px; text-align: right;">
+                <button onclick="closeModal()">❌ बंद</button>
+                <button onclick="saveOfficer()" style="background:#34a853;">💾 सेव</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- IMPORT MODAL -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <h3>डेटा इम्पोर्ट</h3>
+            <textarea id="importData" placeholder="यहाँ JSON डेटा पेस्ट करें" 
+                      style="width:100%; height:200px; padding:10px; border:1px solid #ddd; border-radius:5px;"></textarea>
+            <div style="margin-top: 20px; text-align: right;">
+                <button onclick="closeImportModal()">❌ बंद</button>
+                <button onclick="doImport()" style="background:#34a853;">📤 इम्पोर्ट</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========== सिस्टम कॉन्फ़िग ===========
+        const PASSWORD = "admin123"; // आपका पासवर्ड
+        let officers = []; // पदाधिकारियों का डेटा
+        let isAdmin = false; // क्या एडमिन है
+        
+        // =========== पेज लोड ===========
+        window.onload = function() {
+            loadData();
+            checkPasswordFromURL();
+        };
+        
+        // =========== पासवर्ड चेक ===========
+        function login() {
+            const pass = document.getElementById('passwordInput').value;
+            if (pass === PASSWORD) {
+                isAdmin = true;
+                showAdminPanel();
+                savePasswordToURL();
+                alert("✅ लॉगिन सफल!");
+            } else {
+                alert("❌ गलत पासवर्ड!");
+            }
+        }
+        
+        function logout() {
+            isAdmin = false;
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+            loadData(); // बटन हटाने के लिए
+        }
+        
+        function showAdminPanel() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+        
+        // =========== URL में पासवर्ड सेव ===========
+        function savePasswordToURL() {
+            const url = new URL(window.location);
+            url.hash = PASSWORD;
+            window.history.replaceState({}, '', url);
+        }
+        
+        function checkPasswordFromURL() {
+            const hash = window.location.hash.substring(1);
+            if (hash === PASSWORD) {
+                isAdmin = true;
+                showAdminPanel();
+            }
+        }
+        
+        // =========== डेटा स्टोरेज ===========
+        // डिफ़ॉल्ट डेटा
+        function getDefaultOfficers() {
+            return [
+                {
+                    id: 1,
+                    name: "श्री रमेश शर्मा",
+                    position: "अध्यक्ष",
+                    department: "कार्यकारी समिति",
+                    photo: "https://cdn.pixabay.com/photo/2017/08/01/01/33/beard-2562640_640.jpg",
+                    email: "chairman@mvftrust.org",
+                    phone: "+91 98765 43210"
+                },
+                {
+                    id: 2,
+                    name: "सुश्री प्रीति वर्मा",
+                    position: "सचिव",
+                    department: "प्रबंधन समिति",
+                    photo: "https://cdn.pixabay.com/photo/2018/01/15/07/51/woman-3083383_640.jpg",
+                    email: "secretary@mvftrust.org",
+                    phone: "+91 98765 43211"
+                },
+                {
+                    id: 3,
+                    name: "श्री राजेश यादव",
+                    position: "कोषाध्यक्ष",
+                    department: "वित्त विभाग",
+                    photo: "https://cdn.pixabay.com/photo/2016/11/21/12/42/beard-1845166_640.jpg",
+                    email: "treasurer@mvftrust.org",
+                    phone: "+91 98765 43212"
+                }
+            ];
+        }
+        
+        // डेटा लोड करें
+        function loadData() {
+            // पहले localStorage से चेक करें
+            const saved = localStorage.getItem('mvf_officers');
+            
+            if (saved) {
+                officers = JSON.parse(saved);
+            } else {
+                // नहीं मिला तो डिफ़ॉल्ट डेटा
+                officers = getDefaultOfficers();
+                saveData();
+            }
+            
+            displayOfficers();
+        }
+        
+        // डेटा सेव करें
+        function saveData() {
+            localStorage.setItem('mvf_officers', JSON.stringify(officers));
+            displayOfficers();
+        }
+        
+        // पदाधिकारी दिखाएं
+        function displayOfficers() {
+            const grid = document.getElementById('officersGrid');
+            grid.innerHTML = '';
+            
+            officers.forEach(officer => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                card.innerHTML = `
+                    <img src="${officer.photo}" alt="${officer.name}" class="photo" 
+                         onerror="this.src='https://via.placeholder.com/200x150/1a73e8/ffffff?text=${officer.name.charAt(0)}'">
+                    <h4>${officer.name}</h4>
+                    <p style="color:#1a73e8; font-weight:bold;">${officer.position}</p>
+                    <p style="color:#34a853; font-size:14px;">${officer.department}</p>
+                    ${officer.email ? `<p style="font-size:12px;">📧 ${officer.email}</p>` : ''}
+                    ${officer.phone ? `<p style="font-size:12px;">📞 ${officer.phone}</p>` : ''}
+                    
+                    ${isAdmin ? `
+                    <div style="margin-top:10px;">
+                        <button onclick="editOfficer(${officer.id})" style="background:#fbbc05; font-size:12px;">✏️ Edit</button>
+                        <button onclick="deleteOfficer(${officer.id})" style="background:#ea4335; font-size:12px;">🗑️ Delete</button>
+                    </div>
+                    ` : ''}
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        // =========== CRUD ऑपरेशन ===========
+        // नया जोड़ें
+        function showAddModal() {
+            document.getElementById('modalTitle').innerHTML = "नया पदाधिकारी जोड़ें";
+            document.getElementById('editId').value = '';
+            clearForm();
+            document.getElementById('dataModal').style.display = 'flex';
+        }
+        
+        // संपादित करें
+        function editOfficer(id) {
+            const officer = officers.find(o => o.id == id);
+            if (!officer) return;
+            
+            document.getElementById('modalTitle').innerHTML = "पदाधिकारी संपादित करें";
+            document.getElementById('editId').value = officer.id;
+            document.getElementById('inputName').value = officer.name;
+            document.getElementById('inputPosition').value = officer.position;
+            document.getElementById('inputDepartment').value = officer.department;
+            document.getElementById('inputPhoto').value = officer.photo;
+            document.getElementById('inputEmail').value = officer.email;
+            document.getElementById('inputPhone').value = officer.phone;
+            
+            document.getElementById('dataModal').style.display = 'flex';
+        }
+        
+        // सेव करें
+        function saveOfficer() {
+            const id = document.getElementById('editId').value;
+            const newOfficer = {
+                id: id ? parseInt(id) : Date.now(),
+                name: document.getElementById('inputName').value,
+                position: document.getElementById('inputPosition').value,
+                department: document.getElementById('inputDepartment').value,
+                photo: document.getElementById('inputPhoto').value,
+                email: document.getElementById('inputEmail').value,
+                phone: document.getElementById('inputPhone').value
+            };
+            
+            if (!newOfficer.name || !newOfficer.position) {
+                alert("कृपया नाम और पद भरें!");
+                return;
+            }
+            
+            if (id) {
+                // Update
+                const index = officers.findIndex(o => o.id == id);
+                if (index !== -1) {
+                    officers[index] = newOfficer;
+                }
+            } else {
+                // Add new
+                officers.push(newOfficer);
+            }
+            
+            saveData();
+            closeModal();
+            alert("✅ डेटा सेव हो गया!");
+        }
+        
+        // डिलीट करें
+        function deleteOfficer(id) {
+            if (confirm("क्या आप वाकई हटाना चाहते हैं?")) {
+                officers = officers.filter(o => o.id != id);
+                saveData();
+                alert("🗑️ पदाधिकारी हटा दिया गया!");
+            }
+        }
+        
+        // =========== इम्पोर्ट/एक्सपोर्ट ===========
+        function exportData() {
+            const dataStr = JSON.stringify(officers, null, 2);
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'mvf_officers.json';
+            link.click();
+            
+            alert("📥 डेटा एक्सपोर्ट हो गया!");
+        }
+        
+        function importData() {
+            document.getElementById('importModal').style.display = 'flex';
+        }
+        
+        function doImport() {
+            const dataStr = document.getElementById('importData').value;
+            
+            try {
+                const newData = JSON.parse(dataStr);
+                officers = newData;
+                saveData();
+                closeImportModal();
+                alert("✅ डेटा इम्पोर्ट हो गया!");
+            } catch (e) {
+                alert("❌ गलत JSON फॉर्मेट!");
+            }
+        }
+        
+        // =========== HELPER फंक्शन ===========
+        function closeModal() {
+            document.getElementById('dataModal').style.display = 'none';
+            clearForm();
+        }
+        
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+            document.getElementById('importData').value = '';
+        }
+        
+        function clearForm() {
+            document.getElementById('inputName').value = '';
+            document.getElementById('inputPosition').value = '';
+            document.getElementById('inputDepartment').value = '';
+            document.getElementById('inputPhoto').value = '';
+            document.getElementById('inputEmail').value = '';
+            document.getElementById('inputPhone').value = '';
+        }
+        
+        // =========== BACKUP सिस्टम ===========
+        // हर 30 सेकंड में ऑटो-बैकअप
+        setInterval(function() {
+            if (officers.length > 0) {
+                localStorage.setItem('mvf_officers_backup', JSON.stringify(officers));
+            }
+        }, 30000);
+        
+        // बैकअप से रिस्टोर करें
+        window.restoreBackup = function() {
+            const backup = localStorage.getItem('mvf_officers_backup');
+            if (backup) {
+                officers = JSON.parse(backup);
+                saveData();
+                alert("✅ बैकअप से रिस्टोर हो गया!");
+            }
+        };
+    </script>
+</body>
+</html>
